@@ -16,10 +16,11 @@ usage()
 {
 	error "Usage:\t$0 [options] <elf_file>\n"
 	error "Options:\t-h, --help                  'print this help'"
+	error "        \t-r, --raw                   'print all on a single line'"
 	error "        \t-s, --start-symbol <symbol> 'start at given label (_start by default)'"
-	error "        \t-e, --end-symbol <symbol>   'stop at given label'\n\n"
+	error "        \t-e, --end-symbol   <symbol> 'stop at given label'\n\n"
 	error "Examples:\t$0 ./file"
-	error "        \t$0 -s _start -e .fini ./file"
+	error "        \t$0 -s _start -e main ./file"
 	exit 1
 }
 
@@ -45,11 +46,16 @@ elf_checks()
 LABEL="<_start>:"
 END='$'
 FILE=
+RAW=0
 
 while [ "$#" -gt 0 ] ; do
 	case "$1" in
 	-h|--help)
 		usage
+		;;
+	-r|--raw)
+		RAW=1
+		shift
 		;;
 	-s|--start|--start-sym|--start-symbol)
 		LABEL="<$2>:"
@@ -84,7 +90,7 @@ RANGE="/$LABEL/, $END"
 set -e
 
 OBJDUMP=$(objdump -d "$FILE")
-echo "$OBJDUMP" | sed -rn "
+OUT=$(echo -n "$OBJDUMP" | sed -rn "
 				$RANGE {
 					/$LABEL/n
 					s/(.*:\t)([a-z0-9 ]{1,50})(.*)/\2/p
@@ -92,6 +98,11 @@ echo "$OBJDUMP" | sed -rn "
 			  " \
 		| sed -r "s/[ ]+$//" \
 	        | sed -e 's/^/\\x/' -e 's/ /\\x/g' \
-	        | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n//g' \
-	        | sed -r 's/(.*)/"\1"/'
-	        # Remove the above line if you don't want quotes on output
+		| sed -e ':a' -e 'N' -e '$!ba' -e 's/\n//g' \
+     )
+
+if [ "$RAW" -eq 1 ] ; then
+	echo "$OUT"
+else
+	echo -n "$OUT" | sed -r 's/.{4,44}/"&"\n/g'
+fi

@@ -21,7 +21,7 @@ usage()
 	error "        \t-e, --end-symbol   <symbol> 'stop at given label'\n\n"
 	error "Examples:\t$0 ./file"
 	error "        \t$0 -s _start -e main ./file"
-	exit 1
+	exit 0
 }
 
 # Check we have something that looks like ELF
@@ -31,11 +31,11 @@ elf_checks()
 	if [ ! -f "$ELF" ]
 	then
 		error "$0: File '$ELF' does not exists"
-		usage
+		exit 1
 	else
 		readelf -h "$ELF" &>/dev/null
 		[ "$?" -ne 0 ] && error "$0: File '$ELF' is not an ELF" \
-		&& usage
+		&& exit 1
 	fi
 }
 
